@@ -1,6 +1,29 @@
 import { Credential, Env } from './types';
 
 const CREDENTIALS_LIST_KEY = 'credentials:list';
+const SETTINGS_KEY = 'settings:global';
+const ROUND_ROBIN_KEY = 'state:round_robin_index';
+
+export type LoadBalanceStrategy = 'random' | 'round-robin';
+
+export interface Settings {
+  loadBalanceStrategy: LoadBalanceStrategy;
+}
+
+const DEFAULT_SETTINGS: Settings = { loadBalanceStrategy: 'random' };
+
+export async function getSettings(env: Env): Promise<Settings> {
+  const raw = await env.CREDENTIALS_KV.get(SETTINGS_KEY);
+  if (!raw) return DEFAULT_SETTINGS;
+  return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+}
+
+export async function saveSettings(env: Env, settings: Partial<Settings>): Promise<Settings> {
+  const current = await getSettings(env);
+  const updated = { ...current, ...settings };
+  await env.CREDENTIALS_KV.put(SETTINGS_KEY, JSON.stringify(updated));
+  return updated;
+}
 
 export async function listCredentials(env: Env): Promise<Credential[]> {
   const raw = await env.CREDENTIALS_KV.get(CREDENTIALS_LIST_KEY);
@@ -47,9 +70,22 @@ export async function deleteCredential(env: Env, id: string): Promise<boolean> {
   return true;
 }
 
-export async function getRandomCredential(env: Env): Promise<Credential | null> {
+export async function pickCredential(env: Env): Promise<Credential | null> {
   const credentials = await listCredentials(env);
   if (credentials.length === 0) return null;
+
+  const settings = await getSettings(env);
+
+  if (settings.loadBalanceStrategy === 'round-robin') {
+    const raw = await env.CREDENTIALS_KV.get(ROUND_ROBIN_KEY);
+    let idx = raw ? parseInt(raw, 10) : 0;
+    if (isNaN(idx) || idx >= credentials.length) idx = 0;
+    const cred = credentials[idx];
+    const nextIdx = (idx + 1) % credentials.length;
+    await env.CREDENTIALS_KV.put(ROUND_ROBIN_KEY, String(nextIdx));
+    return cred;
+  }
+
   const idx = Math.floor(Math.random() * credentials.length);
   return credentials[idx];
 }

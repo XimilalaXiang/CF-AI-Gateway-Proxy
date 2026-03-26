@@ -5,7 +5,7 @@ Cloudflare Worker 项目，将多个 Cloudflare AI Gateway 账号的凭证统一
 ## 功能
 
 - **统一 API 地址** — 无论有多少个 Cloudflare 账号，只需一个 Worker 地址
-- **随机负载均衡** — 每次请求随机选择一个凭证，自动分散调用量
+- **负载均衡** — 支持随机 (Random) 和轮询 (Round-Robin) 两种策略，面板可切换
 - **OpenAI 兼容** — 直接对接 OpenAI SDK / 任何 OpenAI 兼容客户端
 - **透明代理** — 请求体、响应体、Headers、Query String 全量透传，支持流式响应
 - **Web 管理面板** — 密码保护的管理界面，在线添加/编辑/删除凭证

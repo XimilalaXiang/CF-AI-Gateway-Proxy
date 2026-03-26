@@ -174,6 +174,15 @@ export function getPanelHTML(): string {
     <div class="hint">点击复制。客户端 baseURL 使用此地址，API Key 填写你设置的密钥。</div>
   </div>
 
+  <div class="info-bar" style="display:flex;align-items:center;gap:16px;">
+    <h3 style="margin:0;white-space:nowrap;">负载策略</h3>
+    <select id="lb-strategy" onchange="updateStrategy()" style="padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:13px;">
+      <option value="random">随机 (Random)</option>
+      <option value="round-robin">轮询 (Round-Robin)</option>
+    </select>
+    <span id="lb-status" style="font-size:12px;color:#64748b;"></span>
+  </div>
+
   <div class="tabs">
     <div class="tab active" onclick="switchTab('creds')">凭证管理</div>
     <div class="tab" onclick="switchTab('logs')">调用日志</div>
@@ -290,8 +299,32 @@ let logTotal = 0;
 
 function init() {
   TOKEN = localStorage.getItem('admin_token') || '';
-  if (!TOKEN) { showLogin(); } else { loadCredentials(); }
+  if (!TOKEN) { showLogin(); } else { loadCredentials(); loadSettings(); }
   document.getElementById('api-url').textContent = location.origin + '/v1';
+}
+
+async function loadSettings() {
+  const res = await fetch('/api/settings', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (!res.ok) return;
+  const s = await res.json();
+  document.getElementById('lb-strategy').value = s.loadBalanceStrategy || 'random';
+  document.getElementById('lb-status').textContent = '';
+}
+
+async function updateStrategy() {
+  const val = document.getElementById('lb-strategy').value;
+  const res = await fetch('/api/settings', {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ loadBalanceStrategy: val })
+  });
+  if (res.ok) {
+    document.getElementById('lb-status').textContent = '已保存';
+    toast('负载策略已更新', 'success');
+    setTimeout(function() { document.getElementById('lb-status').textContent = ''; }, 2000);
+  } else {
+    toast('保存失败', 'error');
+  }
 }
 
 function showLogin() {
@@ -318,6 +351,7 @@ async function doLogin() {
     localStorage.setItem('admin_token', TOKEN);
     showMain();
     loadCredentials();
+    loadSettings();
     toast('登录成功', 'success');
   } else {
     toast('密码错误', 'error');
@@ -416,6 +450,8 @@ async function delCred(id) {
 }
 
 // === Logs ===
+let _logCache = [];
+
 async function loadLogs() {
   const cred = document.getElementById('log-filter-cred').value;
   let url = '/api/logs?limit=' + LOG_LIMIT + '&offset=' + logOffset;
@@ -424,6 +460,7 @@ async function loadLogs() {
   if (!res.ok) { toast('加载日志失败', 'error'); return; }
   const data = await res.json();
   logTotal = data.total;
+  _logCache = data.logs;
   renderLogs(data.logs);
 }
 
@@ -437,11 +474,11 @@ function renderLogs(logs) {
   }
   empty.style.display = 'none';
 
-  tbody.innerHTML = logs.map(l => {
+  tbody.innerHTML = logs.map(function(l, idx) {
     const t = new Date(l.timestamp);
     const timeStr = t.toLocaleString('zh-CN', { hour12: false });
     const statusClass = l.statusCode < 300 ? 'status-ok' : l.statusCode < 500 ? 'status-warn' : 'status-err';
-    return '<tr class="log-row" onclick=\\'showLogDetail(' + JSON.stringify(JSON.stringify(l)) + ')\\'>' +
+    return '<tr class="log-row" onclick="showLogDetail(' + idx + ')">' +
       '<td style="white-space:nowrap;font-size:12px;">' + timeStr + '</td>' +
       '<td>' + esc(l.credentialName) + '</td>' +
       '<td style="font-family:monospace;font-size:12px;">' + esc(l.model || '-') + '</td>' +
@@ -470,8 +507,9 @@ function logPage(dir) {
   loadLogs();
 }
 
-function showLogDetail(jsonStr) {
-  const l = JSON.parse(jsonStr);
+function showLogDetail(idx) {
+  const l = _logCache[idx];
+  if (!l) return;
   const t = new Date(l.timestamp).toLocaleString('zh-CN', { hour12: false });
   let html = '<h4>基本信息</h4><pre>' +
     '时间: ' + t + '\\n' +

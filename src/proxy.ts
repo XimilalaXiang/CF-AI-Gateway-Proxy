@@ -1,9 +1,9 @@
 import { Env, RequestLog } from './types';
-import { getRandomCredential } from './storage';
+import { pickCredential } from './storage';
 import { saveLog } from './logger';
 
 export async function handleProxy(request: Request, env: Env, subPath: string, ctx: ExecutionContext): Promise<Response> {
-  const credential = await getRandomCredential(env);
+  const credential = await pickCredential(env);
   if (!credential) {
     return new Response(JSON.stringify({ error: 'No credentials configured. Please add at least one credential in the admin panel.' }), {
       status: 503,

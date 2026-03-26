@@ -1,6 +1,6 @@
 import { Env } from './types';
 import { getPanelHTML } from './panel';
-import { listCredentials, addCredential, updateCredential, deleteCredential } from './storage';
+import { listCredentials, addCredential, updateCredential, deleteCredential, getSettings, saveSettings } from './storage';
 import { handleProxy } from './proxy';
 import { getLogs, clearLogs } from './logger';
 
@@ -89,6 +89,19 @@ export default {
           return jsonResponse({ success: true });
         }
       }
+    }
+
+    if (path === '/api/settings' && request.method === 'GET') {
+      if (!(await verifyAuth(request, env))) return jsonResponse({ error: 'Unauthorized' }, 401);
+      const settings = await getSettings(env);
+      return jsonResponse(settings);
+    }
+
+    if (path === '/api/settings' && request.method === 'PUT') {
+      if (!(await verifyAuth(request, env))) return jsonResponse({ error: 'Unauthorized' }, 401);
+      const body = await request.json() as Record<string, unknown>;
+      const updated = await saveSettings(env, body);
+      return jsonResponse(updated);
     }
 
     if (path.startsWith('/api/logs')) {
