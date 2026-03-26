@@ -264,7 +264,7 @@ export function getPanelHTML(): string {
     </div>
     <div class="form-group">
       <label>Gateway ID</label>
-      <input id="f-gatewayId" placeholder="AI Gateway 名称，如 first">
+      <input id="f-gatewayId" placeholder="AI Gateway 名称，如 default" value="default">
     </div>
     <div class="form-group">
       <label>API Token</label>
@@ -299,7 +299,13 @@ let logTotal = 0;
 
 function init() {
   TOKEN = localStorage.getItem('admin_token') || '';
-  if (!TOKEN) { showLogin(); } else { loadCredentials(); loadSettings(); }
+  if (!TOKEN) {
+    showLogin();
+  } else {
+    showMain();
+    loadCredentials();
+    loadSettings();
+  }
   document.getElementById('api-url').textContent = location.origin + '/v1';
 }
 
@@ -409,7 +415,7 @@ function openModal(data) {
   document.getElementById('edit-id').value = data ? data.id : '';
   document.getElementById('f-name').value = data ? data.name : '';
   document.getElementById('f-accountId').value = data ? data.accountId : '';
-  document.getElementById('f-gatewayId').value = data ? data.gatewayId : '';
+  document.getElementById('f-gatewayId').value = data ? data.gatewayId : 'default';
   document.getElementById('f-apiToken').value = data ? data.apiToken : '';
   document.getElementById('modal-overlay').classList.add('active');
 }
