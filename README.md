@@ -10,6 +10,7 @@ Cloudflare Worker 项目，将多个 Cloudflare AI Gateway 账号的凭证统一
 - **透明代理** — 请求体、响应体、Headers、Query String 全量透传，支持流式响应
 - **Web 管理面板** — 密码保护的管理界面，在线添加/编辑/删除凭证
 - **调用日志** — 记录每次 API 调用的凭证、模型、耗时、状态码等信息，面板内可查看
+- **凭证连通测试** — 面板内一键测试每个凭证是否可用，实时显示状态和响应
 - **API Key 鉴权** — 防止未授权访问
 
 ## 快速开始
@@ -73,6 +74,7 @@ response = client.chat.completions.create(
 | `POST /v1/embeddings` | 文本嵌入 |
 | `/compat/*` | 直接转发到 AI Gateway |
 | `/workers-ai/*` | Workers AI 原生路由 |
+| `POST /api/test/:id` | 测试指定凭证连通性（管理面板使用） |
 | `GET /health` | 健康检查 |
 
 ## 支持的模型格式

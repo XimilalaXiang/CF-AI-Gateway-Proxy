@@ -72,6 +72,9 @@ export function getPanelHTML(): string {
   .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #334155; }
   .btn-ghost:hover { border-color: #94a3b8; color: #e2e8f0; }
   .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-success { background: #16a34a; color: #fff; }
+  .btn-success:hover { background: #15803d; }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
   table { width: 100%; border-collapse: collapse; }
   thead th {
@@ -277,6 +280,17 @@ export function getPanelHTML(): string {
   </div>
 </div>
 
+<!-- Test Result Modal -->
+<div class="modal-overlay" id="test-overlay">
+  <div class="modal wide">
+    <h2 id="test-title">测试结果</h2>
+    <div class="log-detail" id="test-result-content"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeTest()">关闭</button>
+    </div>
+  </div>
+</div>
+
 <!-- Log Detail Modal -->
 <div class="modal-overlay" id="log-detail-overlay">
   <div class="modal wide">
@@ -395,6 +409,7 @@ function renderCreds(list) {
     '<td>' + esc(c.gatewayId) + '</td>' +
     '<td class="token-cell">' + esc(c.apiToken) + '</td>' +
     '<td class="actions">' +
+      '<button class="btn btn-success btn-sm" id="test-btn-' + c.id + '" onclick="testCred(\\'' + c.id + '\\',\\'' + esc(c.name) + '\\')">测试</button>' +
       '<button class="btn btn-ghost btn-sm" onclick="editCred(\\'' + c.id + '\\')">编辑</button>' +
       '<button class="btn btn-danger btn-sm" onclick="delCred(\\'' + c.id + '\\')">删除</button>' +
     '</td></tr>').join('');
@@ -540,6 +555,37 @@ function showLogDetail(idx) {
 }
 
 function closeLogDetail() { document.getElementById('log-detail-overlay').classList.remove('active'); }
+
+async function testCred(id, name) {
+  var btn = document.getElementById('test-btn-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = '测试中...'; }
+  try {
+    var res = await fetch('/api/test/' + id, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    });
+    var data = await res.json();
+    var statusClass = data.success ? 'status-ok' : 'status-err';
+    var parsed = '';
+    try { parsed = JSON.stringify(JSON.parse(data.body), null, 2); } catch(e) { parsed = data.body || ''; }
+    var html = '<h4>凭证: ' + esc(name) + '</h4>' +
+      '<h4>模型: workers-ai/@cf/openai/gpt-oss-20b</h4>' +
+      '<pre>' +
+      '状态: <span class="' + statusClass + '">' + (data.success ? '成功' : '失败') + ' (' + data.status + ')</span>\\n' +
+      '耗时: ' + data.durationMs + 'ms</pre>' +
+      '<h4>响应内容</h4><pre>' + esc(parsed) + '</pre>';
+    document.getElementById('test-title').textContent = '测试结果 - ' + name;
+    document.getElementById('test-result-content').innerHTML = html;
+    document.getElementById('test-overlay').classList.add('active');
+    toast(data.success ? '测试通过' : '测试失败', data.success ? 'success' : 'error');
+  } catch(e) {
+    toast('测试请求失败: ' + e, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '测试'; }
+  }
+}
+
+function closeTest() { document.getElementById('test-overlay').classList.remove('active'); }
 
 async function clearAllLogs() {
   if (!confirm('确定要清空所有日志吗？')) return;

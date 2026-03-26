@@ -104,6 +104,39 @@ export default {
       return jsonResponse(updated);
     }
 
+    const testMatch = path.match(/^\/api\/test\/(.+)$/);
+    if (testMatch && request.method === 'POST') {
+      if (!(await verifyAuth(request, env))) return jsonResponse({ error: 'Unauthorized' }, 401);
+      const credId = testMatch[1];
+      const creds = await listCredentials(env);
+      const cred = creds.find(c => c.id === credId);
+      if (!cred) return jsonResponse({ error: 'Credential not found' }, 404);
+
+      const targetURL = `https://gateway.ai.cloudflare.com/v1/${cred.accountId}/${cred.gatewayId}/compat/chat/completions`;
+      const startTime = Date.now();
+      try {
+        const resp = await fetch(targetURL, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cred.apiToken}`,
+            'cf-aig-authorization': `Bearer ${cred.apiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'workers-ai/@cf/openai/gpt-oss-20b',
+            messages: [{ role: 'user', content: 'Say "OK" if you can hear me.' }],
+            max_tokens: 20,
+          }),
+        });
+        const durationMs = Date.now() - startTime;
+        const body = await resp.text();
+        return jsonResponse({ success: resp.ok, status: resp.status, durationMs, body: body.slice(0, 1000) });
+      } catch (e) {
+        const durationMs = Date.now() - startTime;
+        return jsonResponse({ success: false, status: 0, durationMs, body: String(e) }, 500);
+      }
+    }
+
     if (path.startsWith('/api/logs')) {
       if (!(await verifyAuth(request, env))) {
         return jsonResponse({ error: 'Unauthorized' }, 401);

@@ -6,9 +6,6 @@ compatibility_date = "2025-03-20"
 binding = "CREDENTIALS_KV"
 id = "YOUR_KV_NAMESPACE_ID"
 
-# Set these via `wrangler secret put` for security:
-# npx wrangler secret put ADMIN_PASSWORD
-# npx wrangler secret put API_KEY
 [vars]
 ADMIN_PASSWORD = "change-me-to-a-strong-password"
-API_KEY = "change-me-to-your-api-key"
+API_KEY = "your-api-key"
